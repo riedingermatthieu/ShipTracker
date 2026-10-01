@@ -1,0 +1,16 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# In Render: New → Blueprint → pick this repository. You'll be asked for AISSTREAM_API_KEY.
+services:
+  - type: web
+    name: shiptracker
+    runtime: node
+    plan: free
+    # Vite, Tailwind and TypeScript are dev dependencies but are needed to build the page.
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: AISSTREAM_API_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: "24"

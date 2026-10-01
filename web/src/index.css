@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme tokens */
+:root {
+  --bg: #eef3f8;
+  --panel: #ffffff;
+  --field: #f5f8fb;
+  --line: #dbe3ec;
+  --fg: #0f1d2e;
+  --muted: #64748b;
+  --hover: #eef4fa;
+  --accent: #0d9488;
+  --accent-fg: #ffffff;
+  color-scheme: light;
+}
+
+/* Dark "maritime" theme tokens */
+.dark {
+  --bg: #06111f;
+  --panel: #0b1a2c;
+  --field: #0f2236;
+  --line: #1c3149;
+  --fg: #e6eef7;
+  --muted: #7d93ad;
+  --hover: #12283f;
+  --accent: #2dd4bf;
+  --accent-fg: #042f2e;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-field: var(--field);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-hover: var(--hover);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+}
+
+html,
+body {
+  background: var(--bg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-panel/90 shadow-sm backdrop-blur;
+  }
+  .dark .card {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 30px -15px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.ocean-glow {
+  background:
+    radial-gradient(60rem 30rem at 10% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    radial-gradient(50rem 30rem at 100% 0%, rgba(56, 189, 248, 0.08), transparent 60%);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--line) 0%, var(--hover) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.live-dot {
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: ping-soft 2s infinite;
+}
+@keyframes ping-soft {
+  70% {
+    box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
+}
+
+/* Range slider */
+.range {
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  accent-color: var(--accent);
+}
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 3px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: pointer;
+}
+.range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 3px solid var(--panel);
+  cursor: pointer;
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* Leaflet */
+.leaflet-container {
+  background: var(--field);
+  font-family: var(--font-sans);
+}
+.ship-icon {
+  background: none;
+  border: none;
+}
+.ship-icon svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  transition: transform 0.15s;
+}
+.leaflet-tooltip.ship-tooltip {
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+}
+.leaflet-tooltip-top.ship-tooltip::before {
+  border-top-color: var(--line);
+}
+.dark .leaflet-control-zoom a,
+.dark .leaflet-control-attribution {
+  background: var(--panel) !important;
+  color: var(--muted) !important;
+  border-color: var(--line) !important;
+}
+.dark .leaflet-control-attribution a {
+  color: var(--accent);
+}
