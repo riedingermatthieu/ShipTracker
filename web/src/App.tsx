@@ -150,8 +150,10 @@ export default function App() {
 
         <StatsBar rows={rows} status={status} rate={rate} />
 
-        <main ref={mainRef} className="grid min-h-0 flex-1 scroll-mt-3 gap-4 lg:grid-cols-5">
-          <div className={`min-h-[28rem] flex-col lg:col-span-3 lg:min-h-0 ${showList ? "flex" : "hidden"}`}>
+        {/* grid-cols-1 = minmax(0, 1fr): without it the implicit column grows to fit
+            the full width of long (truncated) ship names and the page overflows sideways. */}
+        <main ref={mainRef} className="grid min-h-0 flex-1 scroll-mt-3 grid-cols-1 gap-4 lg:grid-cols-5">
+          <div className={`min-h-[28rem] min-w-0 flex-col lg:col-span-3 lg:min-h-0 ${showList ? "flex" : "hidden"}`}>
             <ShipTable
               rows={rows}
               now={now}
@@ -164,7 +166,7 @@ export default function App() {
             />
           </div>
           {/* Kept mounted when hidden so the map doesn't reload tiles on every tab switch */}
-          <div className={`h-[calc(100dvh-8rem)] min-h-80 lg:col-span-2 lg:h-auto ${showMap ? "" : "hidden"}`}>
+          <div className={`h-[calc(100dvh-8rem)] min-h-80 min-w-0 lg:col-span-2 lg:h-auto ${showMap ? "" : "hidden"}`}>
             <ShipMap
               center={center}
               radiusKm={radiusKm}
