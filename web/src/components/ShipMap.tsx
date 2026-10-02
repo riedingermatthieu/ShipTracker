@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Circle, CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Anchor, ZoomIn } from "lucide-react";
@@ -12,6 +12,8 @@ interface Props {
   selected?: number;
   hovered?: number;
   dark: boolean;
+  /** False while hidden behind the mobile List tab */
+  visible: boolean;
   onSelect: (mmsi: number) => void;
   onHover: (mmsi?: number) => void;
   onPickCenter: (c: Center) => void;
@@ -43,23 +45,60 @@ function shipIcon(color: string, dir: number | undefined, moving: boolean, state
   return icon;
 }
 
-function Recenter({ center, radiusKm }: { center: Center; radiusKm: number }) {
+/**
+ * Keeps the view in sync with the search area and the selected ship.
+ * While the map is hidden (mobile tabs) its container has no size, so any
+ * pending fit/pan is deferred until it becomes visible again.
+ */
+function ViewSync({ center, radiusKm, rows, selected, visible }: {
+  center: Center;
+  radiusKm: number;
+  rows: ShipRow[];
+  selected?: number;
+  visible: boolean;
+}) {
   const map = useMap();
-  useEffect(() => {
-    const bounds = L.latLng(center.lat, center.lon).toBounds(radiusKm * 2000);
-    map.flyToBounds(bounds, { duration: 0.8, padding: [20, 20] });
-  }, [center.lat, center.lon, radiusKm, map]);
-  return null;
-}
+  const pendingFit = useRef(true);
+  const pendingFocus = useRef(false);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
-function FocusShip({ rows, selected }: { rows: ShipRow[]; selected?: number }) {
-  const map = useMap();
-  useEffect(() => {
-    const r = rows.find((s) => s.mmsi === selected);
+  const fitArea = (animate: boolean) => {
+    const bounds = L.latLng(center.lat, center.lon).toBounds(radiusKm * 2000);
+    if (animate) map.flyToBounds(bounds, { duration: 0.8, padding: [20, 20] });
+    else map.fitBounds(bounds, { padding: [20, 20] });
+  };
+
+  const focusSelected = () => {
+    const r = rowsRef.current.find((s) => s.mmsi === selected);
     if (r && !map.getBounds().pad(-0.15).contains([r.lat, r.lon])) map.panTo([r.lat, r.lon], { animate: true });
-    // only when the selection changes, not on every position update
+  };
+
+  // Area changed
+  useEffect(() => {
+    if (visible) fitArea(true);
+    else pendingFit.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, map]);
+  }, [center.lat, center.lon, radiusKm]);
+
+  // Selection changed (not on every position update)
+  useEffect(() => {
+    if (selected === undefined) return;
+    if (visible) focusSelected();
+    else pendingFocus.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
+  // Became visible: fix the size, then apply what was deferred
+  useEffect(() => {
+    if (!visible) return;
+    map.invalidateSize();
+    if (pendingFit.current) fitArea(false);
+    if (pendingFocus.current) focusSelected();
+    pendingFit.current = pendingFocus.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
   return null;
 }
 
@@ -81,7 +120,7 @@ function readSeamarkPref() {
   }
 }
 
-export function ShipMap({ center, radiusKm, rows, selected, hovered, dark, onSelect, onHover, onPickCenter }: Props) {
+export function ShipMap({ center, radiusKm, rows, selected, hovered, dark, visible, onSelect, onHover, onPickCenter }: Props) {
   const [map, setMap] = useState<L.Map | null>(null);
   const [zoom, setZoom] = useState(10);
   const [seamarks, setSeamarks] = useState(readSeamarkPref);
@@ -176,8 +215,7 @@ export function ShipMap({ center, radiusKm, rows, selected, hovered, dark, onSel
           interactive={false}
         />
         {markers}
-        <Recenter center={center} radiusKm={radiusKm} />
-        <FocusShip rows={rows} selected={selected} />
+        <ViewSync center={center} radiusKm={radiusKm} rows={rows} selected={selected} visible={visible} />
         <ClickToCenter onPick={onPickCenter} />
       </MapContainer>
       <div className="absolute right-2 top-2 z-[400] flex flex-col items-end gap-1.5">
@@ -203,7 +241,7 @@ export function ShipMap({ center, radiusKm, rows, selected, hovered, dark, onSel
         )}
       </div>
       <div className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded-md bg-panel/85 px-2 py-1 text-[11px] text-muted backdrop-blur">
-        Double-click the map to move the search center
+        Double-tap / double-click to move the search center
       </div>
     </div>
   );

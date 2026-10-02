@@ -172,7 +172,7 @@ export function LocationBar({ center, radiusKm, onCenter, onRadius }: Props) {
           <span className="hidden sm:inline">My location</span>
         </button>
 
-        <label className="flex h-11 flex-1 items-center gap-3 rounded-xl border border-line bg-field px-4 lg:w-72 lg:flex-none">
+        <label className="flex h-11 min-w-0 flex-1 items-center gap-3 rounded-xl border border-line bg-field px-4 lg:w-72 lg:flex-none">
           <span className="text-xs font-medium uppercase tracking-wider text-muted">Radius</span>
           <input
             type="range"
@@ -180,7 +180,7 @@ export function LocationBar({ center, radiusKm, onCenter, onRadius }: Props) {
             max={100}
             value={radiusKm}
             onChange={(e) => onRadius(Number(e.target.value))}
-            className="range min-w-0 flex-1"
+            className="range w-0 min-w-0 flex-1"
           />
           <span className="w-14 text-right font-mono text-sm tabular-nums text-fg">{radiusKm} km</span>
         </label>

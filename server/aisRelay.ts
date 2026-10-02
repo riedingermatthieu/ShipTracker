@@ -168,6 +168,9 @@ export class AisRelay {
     this.closed = true;
     clearTimeout(this.retryTimer);
     this.ws?.removeAllListeners();
+    // terminate() on a still-connecting socket emits "error"; without a
+    // listener that would crash the whole process.
+    this.ws?.on("error", () => {});
     this.ws?.terminate();
   }
 

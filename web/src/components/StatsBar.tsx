@@ -13,13 +13,14 @@ export function StatsBar({ rows, status, rate }: Props) {
   const nearest = rows.reduce<ShipRow | undefined>((a, r) => (!a || r.distanceKm < a.distanceKm ? r : a), undefined);
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <Stat icon={<Ship className="size-4" />} label="Ships in range" value={rows.length} />
-      <Stat icon={<Navigation className="size-4" />} label="Under way" value={moving} />
-      <Stat icon={<Anchor className="size-4" />} label="Stationary" value={stopped} />
+    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+      <Stat icon={<Ship className="size-4" />} label="Ships in range" short="Ships" value={rows.length} />
+      <Stat icon={<Navigation className="size-4" />} label="Under way" short="Moving" value={moving} />
+      <Stat icon={<Anchor className="size-4" />} label="Stationary" short="Stopped" value={stopped} />
       <Stat
         icon={<Activity className="size-4" />}
         label="Feed"
+        short="Feed"
         value={<StatusPill status={status} />}
         hint={status === "live" ? `${rate.toFixed(1)} msg/s${nearest ? ` · nearest ${nearest.distanceKm.toFixed(1)} km` : ""}` : undefined}
       />
@@ -27,14 +28,26 @@ export function StatsBar({ rows, status, rate }: Props) {
   );
 }
 
-function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string }) {
+interface StatProps {
+  icon: React.ReactNode;
+  label: string;
+  /** Label used on narrow screens */
+  short: string;
+  value: React.ReactNode;
+  hint?: string;
+}
+
+function Stat({ icon, label, short, value, hint }: StatProps) {
   return (
-    <div className="card flex items-center gap-3 px-4 py-3">
-      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent">{icon}</div>
+    <div className="card flex min-w-0 items-center gap-3 px-2.5 py-2 sm:px-4 sm:py-3">
+      <div className="hidden size-9 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent sm:grid">{icon}</div>
       <div className="min-w-0">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-muted">{label}</div>
-        <div className="text-lg font-semibold tabular-nums leading-tight text-fg">{value}</div>
-        {hint && <div className="truncate text-[11px] text-muted">{hint}</div>}
+        <div className="truncate text-[10px] font-medium uppercase tracking-wider text-muted sm:text-[11px]">
+          <span className="sm:hidden">{short}</span>
+          <span className="hidden sm:inline">{label}</span>
+        </div>
+        <div className="truncate text-base font-semibold tabular-nums leading-tight text-fg sm:text-lg">{value}</div>
+        {hint && <div className="hidden truncate text-[11px] text-muted md:block">{hint}</div>}
       </div>
     </div>
   );
@@ -51,9 +64,9 @@ const STATUS: Record<ConnectionStatus, { label: string; cls: string }> = {
 export function StatusPill({ status }: { status: ConnectionStatus }) {
   const s = STATUS[status];
   return (
-    <span className="inline-flex items-center gap-2 text-base">
-      <span className={`size-2 rounded-full ${s.cls}`} />
-      {s.label}
+    <span className="inline-flex max-w-full items-center gap-1.5 text-sm sm:gap-2 sm:text-base">
+      <span className={`size-2 shrink-0 rounded-full ${s.cls}`} />
+      <span className="truncate">{s.label}</span>
     </span>
   );
 }

@@ -13,6 +13,9 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, ExternalLink, Navigation, Se
 import type { ShipRow } from "../types";
 import { CATEGORIES, flagFromMmsi, flagUrl, navStatusInfo, shipCategory, shipTypeLabel, vesselLink, type CategoryKey } from "../lib/ais";
 import { compass, kmToNm } from "../lib/geo";
+import { ago } from "../lib/format";
+import { PHONE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
+import { ShipCard } from "./ShipCard";
 
 interface Props {
   rows: ShipRow[];
@@ -21,8 +24,17 @@ interface Props {
   hovered?: number;
   onSelect: (mmsi: number) => void;
   onHover: (mmsi?: number) => void;
+  onShowOnMap: (mmsi: number) => void;
   waiting: boolean;
 }
+
+const SORT_OPTIONS: { id: string; label: string; desc: boolean }[] = [
+  { id: "distance", label: "Nearest first", desc: false },
+  { id: "speed", label: "Fastest first", desc: true },
+  { id: "lastSeen", label: "Recently seen", desc: true },
+  { id: "name", label: "Name A–Z", desc: false },
+  { id: "type", label: "Type", desc: false },
+];
 
 type Unit = "km" | "nm";
 const col = createColumnHelper<ShipRow>();
@@ -43,14 +55,15 @@ const saveJSON = (key: string, v: unknown) => {
   }
 };
 
-export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, waiting }: Props) {
+export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, onShowOnMap, waiting }: Props) {
+  const isPhone = useMediaQuery(PHONE_QUERY);
   const [sorting, setSorting] = useState<SortingState>([{ id: "distance", desc: false }]);
   const [filter, setFilter] = useState("");
   const [cats, setCats] = useState<Set<CategoryKey>>(new Set());
   const [unit, setUnit] = useState<Unit>(() => loadJSON("unit", "km"));
   const [visibility, setVisibility] = useState<VisibilityState>(() => loadJSON("columns", { size: false, bearing: false }));
   const [colMenu, setColMenu] = useState(false);
-  const rowRefs = useRef(new Map<number, HTMLTableRowElement>());
+  const rowRefs = useRef(new Map<number, HTMLElement>());
 
   useEffect(() => saveJSON("unit", unit), [unit]);
   useEffect(() => saveJSON("columns", visibility), [visibility]);
@@ -266,20 +279,20 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
     });
 
   return (
-    <div className="card flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 border-b border-line p-3 sm:p-4">
+    <div className="card flex min-h-0 flex-1 flex-col overflow-clip">
+      {/* Toolbar (sticks to the top of the screen while scrolling on phones) */}
+      <div className="sticky top-0 z-20 flex flex-col gap-3 rounded-t-2xl border-b border-line bg-panel p-3 sm:p-4 md:static md:bg-transparent">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Filter by name, MMSI, call sign, destination, flag…"
-              className="h-9 w-full rounded-lg border border-line bg-field pl-9 pr-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
+              placeholder={isPhone ? "Filter ships…" : "Filter by name, MMSI, call sign, destination, flag…"}
+              className="h-10 w-full rounded-lg border border-line bg-field pl-9 pr-3 text-base text-fg outline-none placeholder:text-muted focus:border-accent md:h-9 md:text-sm"
             />
           </div>
-          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-line text-xs font-medium">
+          <div className="flex h-10 shrink-0 overflow-hidden rounded-lg border border-line text-xs font-medium md:h-9">
             {(["km", "nm"] as Unit[]).map((u) => (
               <button
                 key={u}
@@ -290,7 +303,7 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
               </button>
             ))}
           </div>
-          <div className="relative shrink-0">
+          <div className="relative hidden shrink-0 md:block">
             <button
               onClick={() => setColMenu((v) => !v)}
               className="grid size-9 place-items-center rounded-lg border border-line bg-field text-muted hover:text-fg"
@@ -323,7 +336,25 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        {isPhone && (
+          <select
+            value={sorting[0]?.id ?? "distance"}
+            onChange={(e) => {
+              const o = SORT_OPTIONS.find((s) => s.id === e.target.value)!;
+              setSorting([{ id: o.id, desc: o.desc }]);
+            }}
+            aria-label="Sort ships"
+            className="h-10 rounded-lg border border-line bg-field px-3 text-sm text-fg outline-none focus:border-accent"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>
+                Sort: {o.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
           {(Object.keys(CATEGORIES) as CategoryKey[])
             .filter((k) => catCounts.get(k))
             .map((k) => {
@@ -333,7 +364,7 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
                 <button
                   key={k}
                   onClick={() => toggleCat(k)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                  className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition md:px-2.5 md:py-1 ${
                     on ? "border-transparent text-white" : "border-line text-muted hover:text-fg"
                   }`}
                   style={on ? { background: c.color } : undefined}
@@ -352,8 +383,39 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
         </div>
       </div>
 
-      {/* Table */}
+      {/* Card list on phones, table elsewhere */}
       <div className="min-h-0 flex-1 overflow-auto">
+        {isPhone ? (
+          <ul>
+            {visibleRows.map(({ original: s }) => (
+              <ShipCard
+                key={s.mmsi}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(s.mmsi, el);
+                  else rowRefs.current.delete(s.mmsi);
+                }}
+                ship={s}
+                now={now}
+                expanded={s.mmsi === selected}
+                formatDistance={(km) => `${fmtDist(km)} ${unit}`}
+                onToggle={() => onSelect(s.mmsi)}
+                onShowOnMap={() => onShowOnMap(s.mmsi)}
+              />
+            ))}
+            {waiting &&
+              visibleRows.length === 0 &&
+              Array.from({ length: 5 }, (_, i) => (
+                <li key={`sk${i}`} className="flex gap-3 border-b border-line/60 px-4 py-3.5">
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-4 rounded" style={{ width: `${55 + ((i * 23) % 35)}%` }} />
+                    <div className="skeleton h-3 w-1/3 rounded" />
+                    <div className="skeleton h-3 w-1/2 rounded" />
+                  </div>
+                  <div className="skeleton h-4 w-14 rounded" />
+                </li>
+              ))}
+          </ul>
+        ) : (
         <table className="w-full border-separate border-spacing-0 text-left">
           <thead className="sticky top-0 z-10 bg-panel/95 backdrop-blur">
             {table.getHeaderGroups().map((hg) => (
@@ -428,6 +490,7 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
               ))}
           </tbody>
         </table>
+        )}
 
         {visibleRows.length === 0 && (
           <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
@@ -454,17 +517,8 @@ export function ShipTable({ rows, now, selected, hovered, onSelect, onHover, wai
         <span>
           Showing {visibleRows.length} of {rows.length} ships
         </span>
-        <span>AIS data: aisstream.io · Geocoding: OpenStreetMap Nominatim</span>
+        <span className="hidden sm:inline">AIS data: aisstream.io · Geocoding: OpenStreetMap Nominatim</span>
       </div>
     </div>
   );
-}
-
-function ago(ms: number) {
-  const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 10) return "just now";
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  return `${Math.floor(m / 60)}h ago`;
 }
